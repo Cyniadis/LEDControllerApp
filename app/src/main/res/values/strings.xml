@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">LEDController</string>
+    <string name="connect">Connect</string>
+    <string name="connecting_to_saber">Connecting to saber...</string>
+    <string name="scan">rescan</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="textview">Choose a device to connect</string>
+</resources>

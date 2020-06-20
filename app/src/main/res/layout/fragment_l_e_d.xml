@@ -58,7 +58,7 @@
                 android:id="@+id/colorBar"
                 android:layout_width="202dp"
                 android:layout_height="match_parent"
-                android:max="51"
+                android:max="255"
                 android:progress="0" />
 
             <TextView

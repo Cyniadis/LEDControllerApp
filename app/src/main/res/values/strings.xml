@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">LEDController</string>
-    <string name="connect">Connect</string>
-    <string name="connecting_to_saber">Connecting to saber...</string>
-    <string name="scan">rescan</string>
     <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="textview">Choose a device to connect</string>
+    <string name="textview">Choose a device to connect.</string>
+    <string name="textview2">If your do not find your device, it may not be paired with your phone.\nPlease check out in bluetooth settings.</string>
+    <string name="_255">255</string>
+    <string name="_0">0</string>
+    <string name="connecting">Connecting...</string>
 </resources>

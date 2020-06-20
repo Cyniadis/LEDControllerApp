@@ -21,6 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.fragment.app.Fragment;
+import androidx.viewpager2.widget.ViewPager2;
 
 import java.util.ArrayList;
 import java.util.Set;
@@ -32,7 +33,10 @@ public class BluetoothFragment extends Fragment {
 
     private ArrayList<BluetoothDevice> listOfDevices;
 
-    public BluetoothFragment() {
+    private ViewPager2 viewPager;
+
+    public BluetoothFragment(ViewPager2 viewPager) {
+        this.viewPager = viewPager;
     }
 
     @Override
@@ -44,15 +48,23 @@ public class BluetoothFragment extends Fragment {
 
     public void onItemClick(int position) {
         BluetoothDevice device = listOfDevices.get(position);
-        Fragment fragment = new LEDFragment(device);
-        getActivity().getSupportFragmentManager().beginTransaction().replace(R.id.main_layout, fragment).addToBackStack(null).commit();
+        LEDFragment fragment = new LEDFragment(device);
+
+        MyPagerAdapter pagerAdapter = (MyPagerAdapter) viewPager.getAdapter();
+        pagerAdapter.addFragment(fragment);
+        viewPager.setCurrentItem(1);
+        pagerAdapter.notifyDataSetChanged();
     }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
-        return inflater.inflate(R.layout.bluetooth_fragment, container, false);
+        View view = inflater.inflate(R.layout.bluetooth_fragment, container, false);
+        ListView listView = view.findViewById(R.id.btDeviceList);
+        listView.setOnItemClickListener((adapterView, v, i, l) -> onItemClick(i) );
+        return view;
+
     }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
@@ -75,10 +87,6 @@ public class BluetoothFragment extends Fragment {
         } else {
             scanDevices();
         }
-
-        ListView listView = getView().findViewById(R.id.btDeviceList);
-        listView.setOnItemClickListener((adapterView, view, i, l) -> onItemClick(i) );
-
     }
 
     public boolean scanDevices() {

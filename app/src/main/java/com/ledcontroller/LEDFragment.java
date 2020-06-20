@@ -14,6 +14,7 @@ import android.os.Bundle;
 import androidx.fragment.app.Fragment;
 
 import android.os.IBinder;
+import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
@@ -21,7 +22,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
+import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,33 +37,12 @@ import android.widget.Toast;
  */
 public class LEDFragment extends Fragment implements ServiceConnection, SerialListener {
 
-     class BluetoothConnectionTask extends AsyncTask<Void, Void, Void> {
-         private ProgressDialog progressDialog;
-
-         @Override
-         protected Void doInBackground(Void... voids) {
-             connect();
-             return null;
-         }
-
-         @Override
-         protected void onPreExecute() {
-             progressDialog = ProgressDialog.show(getContext(), "Connecting...", "Please wait.");
-         }
-
-         @Override
-         protected void onPostExecute(Void aVoid) {
-             super.onPostExecute(aVoid);
-             progressDialog.dismiss();
-         }
-     };
 
     private SeekBar colorBar;
     private String deviceAddress;
     private SerialService service;
     private boolean connected = false;
     private boolean initialStart = true;
-    private BluetoothConnectionTask task = null;
 
     public LEDFragment(BluetoothDevice device) {
         this.deviceAddress = device.getAddress();
@@ -68,7 +51,6 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setRetainInstance(true);
     }
 
     @Override
@@ -127,12 +109,16 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
     @Override
     public void onResume() {
         super.onResume();
-        if (initialStart && service != null) {
-            initialStart = false;
-
-            task = new BluetoothConnectionTask();
-            task.execute();
+        if (service != null) {
+            getActivity().runOnUiThread(this::connect);
         }
+    }
+
+    @Override
+    public void onPause() {
+        if (connected)
+            disconnect();
+        super.onPause();
     }
 
     @Override
@@ -141,8 +127,8 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
         service.attach(this);
         if (initialStart && isResumed()) {
             initialStart = false;
-            task = new BluetoothConnectionTask();
-            task.execute();
+            getActivity().runOnUiThread(this::connect);
+
         }
     }
 
@@ -168,9 +154,9 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
         try {
             BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             BluetoothDevice device = bluetoothAdapter.getRemoteDevice(deviceAddress);
-            connected = false;
             SerialSocket socket = new SerialSocket(getActivity().getApplicationContext(), device);
             service.connect(socket);
+            connected = false;
         } catch (Exception e) {
             onSerialConnectError(e);
         }
@@ -179,6 +165,7 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
     private void disconnect() {
         connected = false;
         service.disconnect();
+        getActivity().runOnUiThread(() -> { Toast.makeText(getContext(), "Disconnected", Toast.LENGTH_SHORT).show(); });
     }
 
     /*
@@ -187,18 +174,27 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
     @Override
     public void onSerialConnect() {
 
-        getActivity().runOnUiThread(() -> { Toast.makeText(getContext(), "Connected", Toast.LENGTH_LONG).show(); });
+        LinearLayout layout = (LinearLayout) getView().findViewById(R.id.loadingLayout);
+        layout.setVisibility(View.GONE);
+        TableLayout table = (TableLayout) getView().findViewById(R.id.tableLayout);
+        table.setVisibility(View.VISIBLE);
+
+
+        getActivity().runOnUiThread(() -> { Toast.makeText(getContext(), "Connected", Toast.LENGTH_SHORT).show(); });
         connected = true;
     }
 
     @Override
     public void onSerialConnectError(Exception e) {
-        getActivity().runOnUiThread(() -> { Toast.makeText(getContext(), "Connection failed: " + e.getMessage(), Toast.LENGTH_LONG).show(); });
+
+        ProgressBar progressBar = getView().findViewById(R.id.progressBar);
+        progressBar.setVisibility(View.INVISIBLE);
+        TextView textView = getView().findViewById(R.id.connectionStatus);
+        textView.setText("Connection failed.");
+
         disconnect();
-        if (task != null)
-        {
-            task.progressDialog.dismiss();
-        }
+
+        getActivity().onBackPressed();
     }
 
     @Override
@@ -207,8 +203,8 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
 
     @Override
     public void onSerialIoError(Exception e) {
-        Toast.makeText(getContext(), "Connection lost: " + e.getMessage(), Toast.LENGTH_LONG).show();
         disconnect();
+        Toast.makeText(getContext(), "Connection lost: " + e.getMessage(), Toast.LENGTH_LONG).show();
     }
 
 

@@ -11,6 +11,7 @@ import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
 
 import android.os.IBinder;
@@ -22,12 +23,19 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.larswerkman.holocolorpicker.ColorPicker;
+
+import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 
 /**
@@ -38,7 +46,7 @@ import android.widget.Toast;
 public class LEDFragment extends Fragment implements ServiceConnection, SerialListener {
 
 
-    private SeekBar colorBar;
+    private ColorPicker colorPicker;
     private String deviceAddress;
     private SerialService service;
     private boolean connected = false;
@@ -59,8 +67,9 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_l_e_d, container, false);
 
-        colorBar = view.findViewById(R.id.colorBar);
-        colorBar.setOnSeekBarChangeListener(colorBarListener);
+        colorPicker = view.findViewById(R.id.color_picker);
+        colorPicker.setOnColorChangedListener(colorPickerListener);
+        colorPicker.setShowOldCenterColor(false);
 
         return view;
     }
@@ -165,7 +174,9 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
     private void disconnect() {
         connected = false;
         service.disconnect();
-        getActivity().runOnUiThread(() -> { Toast.makeText(getContext(), "Disconnected", Toast.LENGTH_SHORT).show(); });
+        getActivity().runOnUiThread(() -> {
+            Toast.makeText(getContext(), "Disconnected", Toast.LENGTH_SHORT).show();
+        });
     }
 
     /*
@@ -174,14 +185,18 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
     @Override
     public void onSerialConnect() {
 
-        LinearLayout layout = (LinearLayout) getView().findViewById(R.id.loadingLayout);
-        layout.setVisibility(View.GONE);
-        TableLayout table = (TableLayout) getView().findViewById(R.id.tableLayout);
-        table.setVisibility(View.VISIBLE);
+        LinearLayout loadingLayout = (LinearLayout) getView().findViewById(R.id.loading_layout);
+        loadingLayout.setVisibility(View.GONE);
+        ConstraintLayout ledLayout = (ConstraintLayout) getView().findViewById(R.id.led_layout);
+        ledLayout.setVisibility(View.VISIBLE);
 
 
-        getActivity().runOnUiThread(() -> { Toast.makeText(getContext(), "Connected", Toast.LENGTH_SHORT).show(); });
+        getActivity().runOnUiThread(() -> {
+            Toast.makeText(getContext(), "Connected", Toast.LENGTH_SHORT).show();
+        });
         connected = true;
+
+        sendColor(colorPicker.getColor());
     }
 
     @Override
@@ -209,35 +224,30 @@ public class LEDFragment extends Fragment implements ServiceConnection, SerialLi
 
 
     /////////////
-    private final SeekBar.OnSeekBarChangeListener colorBarListener = new SeekBar.OnSeekBarChangeListener() {
+    private void sendColor(int color)
+    {
+        try {
+            ByteBuffer argb = ByteBuffer.allocate(4).putInt(color);
+
+            byte[] rgb = { argb.get(1), argb.get(2), argb.get(3) };
+            service.write(rgb);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Cannot send data.", Toast.LENGTH_SHORT).show();
+            onSerialIoError(e);
+        }
+    }
+
+    private final ColorPicker.OnColorChangedListener colorPickerListener = new ColorPicker.OnColorChangedListener() {
         @Override
-        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-
-            TextView textValue = getView().findViewById(R.id.colorValue);
-            textValue.setText(String.valueOf(progress));
-
+        public void onColorChanged(int color) {
+            sendColor(color);
             if (!connected) {
                 Toast.makeText(getContext(), "not connected", Toast.LENGTH_SHORT).show();
                 return;
             }
-            try {
-                byte value = (byte) ((progress <= seekBar.getMax() / 2) ? 48 : 49);
-                byte[] data = {value};
-                service.write(data);
-            } catch (Exception e) {
-                Toast.makeText(getContext(), "Cannot send data.", Toast.LENGTH_SHORT).show();
-                onSerialIoError(e);
-            }
-        }
-
-        @Override
-        public void onStartTrackingTouch(SeekBar seekBar) {
 
         }
 
-        @Override
-        public void onStopTrackingTouch(SeekBar seekBar) {
-
-        }
     };
+
 }

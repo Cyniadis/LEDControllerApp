@@ -63,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         this.setRequestedOrientation(SCREEN_ORIENTATION_PORTRAIT);
-        
+
         pagerAdapter = new MyPagerAdapter(getSupportFragmentManager(), getLifecycle());
 
         viewPager = findViewById(R.id.view_pager);
